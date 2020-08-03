@@ -1,0 +1,49 @@
+{
+  "generator-jhipster": {
+    "promptValues": {
+      "packageName": "org.muellners.finscale.deposit"
+    },
+    "jhipsterVersion": "6.10.1",
+    "applicationType": "microservice",
+    "baseName": "depositAccountManagement",
+    "packageName": "org.muellners.finscale.deposit",
+    "packageFolder": "org/muellners/finscale/deposit",
+    "serverPort": "9013",
+    "authenticationType": "uaa",
+    "uaaBaseName": "identity",
+    "cacheProvider": "hazelcast",
+    "enableHibernateCache": true,
+    "websocket": false,
+    "databaseType": "sql",
+    "devDatabaseType": "h2Disk",
+    "prodDatabaseType": "postgresql",
+    "searchEngine": false,
+    "messageBroker": false,
+    "serviceDiscoveryType": "eureka",
+    "buildTool": "gradle",
+    "enableSwaggerCodegen": false,
+    "jwtSecretKey": "ZDRlNzJkZmMwM2I1YTE1Mzk3ZjQzNTczOWFkNGZkNGY1MTE2NjMzMzdjODgyNGQ0MDMxMTk0ODZmM2RlM2Q4NmU5NjY4ZGYwNjkzODM1NDk1OWIzYjQ1ZmM2NjQ0YzhlNDlkZTZmZDIxMjg2YmMzNWE5OTA2MDU3NWJkNWI1YWQ=",
+    "embeddableLaunchScript": false,
+    "creationTimestamp": 1596453831791,
+    "testFrameworks": [],
+    "jhiPrefix": "jhi",
+    "entitySuffix": "",
+    "dtoSuffix": "DTO",
+    "otherModules": [
+      {
+        "name": "generator-jhipster-kotlin",
+        "version": "1.9.0"
+      }
+    ],
+    "enableTranslation": false,
+    "clientPackageManager": "npm",
+    "blueprints": [
+      {
+        "name": "generator-jhipster-kotlin",
+        "version": "1.9.0"
+      }
+    ],
+    "skipClient": true,
+    "skipUserManagement": true
+  }
+}

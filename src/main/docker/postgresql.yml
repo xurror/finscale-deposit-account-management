@@ -1,0 +1,12 @@
+version: '2'
+services:
+  depositaccountmanagement-postgresql:
+    image: postgres:12.3
+    # volumes:
+    #     - ~/volumes/jhipster/depositAccountManagement/postgresql/:/var/lib/postgresql/data/
+    environment:
+      - POSTGRES_USER=depositAccountManagement
+      - POSTGRES_PASSWORD=
+      - POSTGRES_HOST_AUTH_METHOD=trust
+    ports:
+      - 5432:5432
