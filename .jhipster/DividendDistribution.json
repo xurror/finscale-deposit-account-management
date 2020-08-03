@@ -1,0 +1,32 @@
+{
+  "name": "DividendDistribution",
+  "fields": [
+    {
+      "fieldName": "dueDate",
+      "fieldType": "LocalDate",
+      "fieldValidateRules": [
+        "required"
+      ]
+    },
+    {
+      "fieldName": "dividendRate",
+      "fieldType": "String",
+      "fieldValidateRules": [
+        "required"
+      ]
+    }
+  ],
+  "relationships": [],
+  "changelogDate": "20200803145434",
+  "entityTableName": "dividend_distribution",
+  "dto": "no",
+  "pagination": "no",
+  "service": "no",
+  "jpaMetamodelFiltering": false,
+  "fluentMethods": true,
+  "readOnly": false,
+  "embedded": false,
+  "clientRootFolder": "depositAccountManagement",
+  "applications": "*",
+  "microserviceName": "depositAccountManagement"
+}

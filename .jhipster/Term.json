@@ -1,0 +1,35 @@
+{
+  "name": "Term",
+  "fields": [
+    {
+      "fieldName": "period",
+      "fieldType": "Integer"
+    },
+    {
+      "fieldName": "timeUnit",
+      "fieldType": "TimeUnit",
+      "fieldValues": "MONTH,YEAR"
+    },
+    {
+      "fieldName": "interestPayable",
+      "fieldType": "InterestPayable",
+      "fieldValues": "MATURITY,ANNUALLY,MONTHLY,QUARTERLY",
+      "fieldValidateRules": [
+        "required"
+      ]
+    }
+  ],
+  "relationships": [],
+  "changelogDate": "20200803145234",
+  "entityTableName": "term",
+  "dto": "no",
+  "pagination": "no",
+  "service": "no",
+  "jpaMetamodelFiltering": false,
+  "fluentMethods": true,
+  "readOnly": false,
+  "embedded": false,
+  "clientRootFolder": "depositAccountManagement",
+  "applications": "*",
+  "microserviceName": "depositAccountManagement"
+}

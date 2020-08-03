@@ -1,0 +1,96 @@
+entity ProductDefinitionCommand {
+	action Action required,
+    note String,
+	createdOn String,
+	createdBy String
+}
+
+entity AvailableTransactionType {
+	transactionType String required
+}
+
+entity ProductInstance {
+  customerIdentifier String,
+  productIdentifier String,
+  accountIdentifier String,
+  alternativeAccountNumber String,
+  beneficiaries String,
+  openedOn String,
+  lastTransactionDate String,
+  state String,
+  balance Double
+}
+
+entity Term {
+  period Integer,
+  timeUnit TimeUnit,
+  interestPayable InterestPayable required 
+}
+
+entity ProductDefinition {
+  type Type,
+  identifier String,
+  name String required,
+  description String,
+  minimumBalance Double required,
+  equityLedgerIdentifier String,
+  cashAccountIdentifier String,
+  expenseAccountIdentifier String,
+  accrueAccountIdentifier String,
+  interest Double,
+  flexible Boolean required,
+  active Boolean 
+}
+
+relationship OneToMany {
+    ProductDefinition{charges} to Charge,
+}
+
+relationship ManyToOne {
+    ProductDefinition{term required} to Term,
+    ProductDefinition{currency required} to Currency,
+}
+
+entity DividendDistribution {
+  dueDate LocalDate required,
+  dividendRate String required
+}
+
+entity Currency {
+  code String required,
+  name String required,
+  sign String required,
+  scale Integer required
+}
+
+entity Charge {
+  actionIdentifier String,
+  incomeAccountIdentifier String,
+  name String required,
+  description String,
+  proportional Boolean,
+  amount Double
+}
+
+entity Action {
+  identifier String,
+  name String required,
+  description String,
+  transactionType String
+}
+
+enum Action {
+    ACTIVATE, DEACTIVATE
+}
+
+enum InterestPayable {
+  MATURITY, ANNUALLY, MONTHLY, QUARTERLY
+}
+
+enum TimeUnit {
+  MONTH, YEAR
+}
+
+enum Type {
+  CHECKING, SAVINGS, SHARE
+}

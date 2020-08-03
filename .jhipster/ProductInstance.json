@@ -1,0 +1,54 @@
+{
+  "name": "ProductInstance",
+  "fields": [
+    {
+      "fieldName": "customerIdentifier",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "productIdentifier",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "accountIdentifier",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "alternativeAccountNumber",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "beneficiaries",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "openedOn",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "lastTransactionDate",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "state",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "balance",
+      "fieldType": "Double"
+    }
+  ],
+  "relationships": [],
+  "changelogDate": "20200803145134",
+  "entityTableName": "product_instance",
+  "dto": "no",
+  "pagination": "no",
+  "service": "no",
+  "jpaMetamodelFiltering": false,
+  "fluentMethods": true,
+  "readOnly": false,
+  "embedded": false,
+  "clientRootFolder": "depositAccountManagement",
+  "applications": "*",
+  "microserviceName": "depositAccountManagement"
+}

@@ -1,0 +1,99 @@
+{
+  "name": "ProductDefinition",
+  "fields": [
+    {
+      "fieldName": "type",
+      "fieldType": "Type",
+      "fieldValues": "CHECKING,SAVINGS,SHARE"
+    },
+    {
+      "fieldName": "identifier",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "name",
+      "fieldType": "String",
+      "fieldValidateRules": [
+        "required"
+      ]
+    },
+    {
+      "fieldName": "description",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "minimumBalance",
+      "fieldType": "Double",
+      "fieldValidateRules": [
+        "required"
+      ]
+    },
+    {
+      "fieldName": "equityLedgerIdentifier",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "cashAccountIdentifier",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "expenseAccountIdentifier",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "accrueAccountIdentifier",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "interest",
+      "fieldType": "Double"
+    },
+    {
+      "fieldName": "flexible",
+      "fieldType": "Boolean",
+      "fieldValidateRules": [
+        "required"
+      ]
+    },
+    {
+      "fieldName": "active",
+      "fieldType": "Boolean"
+    }
+  ],
+  "relationships": [
+    {
+      "relationshipType": "one-to-many",
+      "otherEntityName": "charge",
+      "otherEntityRelationshipName": "productDefinition",
+      "relationshipName": "charges"
+    },
+    {
+      "relationshipType": "many-to-one",
+      "otherEntityName": "term",
+      "otherEntityRelationshipName": "productDefinition",
+      "relationshipValidateRules": "required",
+      "relationshipName": "term",
+      "otherEntityField": "id"
+    },
+    {
+      "relationshipType": "many-to-one",
+      "otherEntityName": "currency",
+      "otherEntityRelationshipName": "productDefinition",
+      "relationshipValidateRules": "required",
+      "relationshipName": "currency",
+      "otherEntityField": "id"
+    }
+  ],
+  "changelogDate": "20200803145334",
+  "entityTableName": "product_definition",
+  "dto": "no",
+  "pagination": "no",
+  "service": "no",
+  "jpaMetamodelFiltering": false,
+  "fluentMethods": true,
+  "readOnly": false,
+  "embedded": false,
+  "clientRootFolder": "depositAccountManagement",
+  "applications": "*",
+  "microserviceName": "depositAccountManagement"
+}
