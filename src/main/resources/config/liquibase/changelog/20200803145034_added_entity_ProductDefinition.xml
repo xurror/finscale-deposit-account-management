@@ -42,9 +42,6 @@
             <column name="accrue_account_identifier" type="varchar(255)">
                 <constraints nullable="false" />
             </column>
-            <column name="product_instance_id" type="varchar(255)">
-                <constraints nullable="false"/>
-            </column>
             <column name="interest" type="double">
                 <constraints nullable="false" />
             </column>
