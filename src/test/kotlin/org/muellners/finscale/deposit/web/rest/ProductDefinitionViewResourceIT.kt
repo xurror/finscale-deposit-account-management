@@ -1,34 +1,28 @@
 package org.muellners.finscale.deposit.web.rest
 
-import org.muellners.finscale.deposit.DepositAccountManagementApp
-import org.muellners.finscale.deposit.config.SecurityBeanOverrideConfiguration
-import org.muellners.finscale.deposit.domain.ProductDefinition
-import org.muellners.finscale.deposit.domain.Term
-import org.muellners.finscale.deposit.domain.Currency
-import org.muellners.finscale.deposit.repository.ProductDefinitionRepository
-import org.muellners.finscale.deposit.web.rest.errors.ExceptionTranslator
-
+import javax.persistence.EntityManager
 import kotlin.test.assertNotNull
-
+import org.assertj.core.api.Assertions.assertThat
+import org.hamcrest.Matchers.hasItem
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.mockito.MockitoAnnotations
+import org.muellners.finscale.deposit.DepositAccountManagementApp
+import org.muellners.finscale.deposit.config.SecurityBeanOverrideConfiguration
+import org.muellners.finscale.deposit.domain.Currency
+import org.muellners.finscale.deposit.domain.enumeration.Type
+import org.muellners.finscale.deposit.repository.ProductDefinitionRepository
+import org.muellners.finscale.deposit.view.ProductDefinitionView
+import org.muellners.finscale.deposit.view.TermView
+import org.muellners.finscale.deposit.web.rest.errors.ExceptionTranslator
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.data.web.PageableHandlerMethodArgumentResolver
 import org.springframework.http.MediaType
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter
-import org.springframework.test.web.servlet.MockMvc
-import org.springframework.test.web.servlet.setup.MockMvcBuilders
 import org.springframework.security.test.context.support.WithMockUser
-import org.springframework.transaction.annotation.Transactional
-import org.springframework.validation.Validator
-import javax.persistence.EntityManager
-
-import org.assertj.core.api.Assertions.assertThat
-import org.hamcrest.Matchers.hasItem
-import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf
+import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
@@ -36,8 +30,9 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.content
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
-
-import org.muellners.finscale.deposit.domain.enumeration.Type
+import org.springframework.test.web.servlet.setup.MockMvcBuilders
+import org.springframework.transaction.annotation.Transactional
+import org.springframework.validation.Validator
 
 /**
  * Integration tests for the [ProductDefinitionResource] REST controller.
@@ -47,7 +42,7 @@ import org.muellners.finscale.deposit.domain.enumeration.Type
 @SpringBootTest(classes = [SecurityBeanOverrideConfiguration::class, DepositAccountManagementApp::class])
 @AutoConfigureMockMvc
 @WithMockUser
-class ProductDefinitionResourceIT  {
+class ProductDefinitionViewResourceIT {
 
     @Autowired
     private lateinit var productDefinitionRepository: ProductDefinitionRepository
@@ -64,32 +59,28 @@ class ProductDefinitionResourceIT  {
     @Autowired
     private lateinit var validator: Validator
 
-
     @Autowired
     private lateinit var em: EntityManager
 
-
     private lateinit var restProductDefinitionMockMvc: MockMvc
 
-    private lateinit var productDefinition: ProductDefinition
+    private lateinit var productDefinitionView: ProductDefinitionView
 
-    
     @BeforeEach
     fun setup() {
         MockitoAnnotations.initMocks(this)
-        val productDefinitionResource = ProductDefinitionResource(productDefinitionRepository)		
-         this.restProductDefinitionMockMvc = MockMvcBuilders.standaloneSetup(productDefinitionResource)		
-             .setCustomArgumentResolvers(pageableArgumentResolver)		
-             .setControllerAdvice(exceptionTranslator)		
-             .setConversionService(createFormattingConversionService())		
-             .setMessageConverters(jacksonMessageConverter)		
+        val productDefinitionResource = ProductDefinitionResource(productDefinitionRepository)
+         this.restProductDefinitionMockMvc = MockMvcBuilders.standaloneSetup(productDefinitionResource)
+             .setCustomArgumentResolvers(pageableArgumentResolver)
+             .setControllerAdvice(exceptionTranslator)
+             .setConversionService(createFormattingConversionService())
+             .setMessageConverters(jacksonMessageConverter)
              .setValidator(validator).build()
     }
 
-
     @BeforeEach
     fun initTest() {
-        productDefinition = createEntity(em)
+        productDefinitionView = createEntity(em)
     }
 
     @Test
@@ -102,7 +93,7 @@ class ProductDefinitionResourceIT  {
         restProductDefinitionMockMvc.perform(
             post("/api/product-definitions")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(convertObjectToJsonBytes(productDefinition))
+                .content(convertObjectToJsonBytes(productDefinitionView))
         ).andExpect(status().isCreated)
 
         // Validate the ProductDefinition in the database
@@ -129,13 +120,13 @@ class ProductDefinitionResourceIT  {
         val databaseSizeBeforeCreate = productDefinitionRepository.findAll().size
 
         // Create the ProductDefinition with an existing ID
-        productDefinition.id = 1L
+        productDefinitionView.id = 1L
 
         // An entity with an existing ID cannot be created, so this API call must fail
         restProductDefinitionMockMvc.perform(
             post("/api/product-definitions")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(convertObjectToJsonBytes(productDefinition))
+                .content(convertObjectToJsonBytes(productDefinitionView))
         ).andExpect(status().isBadRequest)
 
         // Validate the ProductDefinition in the database
@@ -143,20 +134,19 @@ class ProductDefinitionResourceIT  {
         assertThat(productDefinitionList).hasSize(databaseSizeBeforeCreate)
     }
 
-
     @Test
     @Transactional
     fun checkNameIsRequired() {
         val databaseSizeBeforeTest = productDefinitionRepository.findAll().size
         // set the field null
-        productDefinition.name = null
+        productDefinitionView.name = null
 
         // Create the ProductDefinition, which fails.
 
         restProductDefinitionMockMvc.perform(
             post("/api/product-definitions")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(convertObjectToJsonBytes(productDefinition))
+                .content(convertObjectToJsonBytes(productDefinitionView))
         ).andExpect(status().isBadRequest)
 
         val productDefinitionList = productDefinitionRepository.findAll()
@@ -168,14 +158,14 @@ class ProductDefinitionResourceIT  {
     fun checkMinimumBalanceIsRequired() {
         val databaseSizeBeforeTest = productDefinitionRepository.findAll().size
         // set the field null
-        productDefinition.minimumBalance = null
+        productDefinitionView.minimumBalance = null
 
         // Create the ProductDefinition, which fails.
 
         restProductDefinitionMockMvc.perform(
             post("/api/product-definitions")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(convertObjectToJsonBytes(productDefinition))
+                .content(convertObjectToJsonBytes(productDefinitionView))
         ).andExpect(status().isBadRequest)
 
         val productDefinitionList = productDefinitionRepository.findAll()
@@ -187,14 +177,14 @@ class ProductDefinitionResourceIT  {
     fun checkFlexibleIsRequired() {
         val databaseSizeBeforeTest = productDefinitionRepository.findAll().size
         // set the field null
-        productDefinition.flexible = null
+        productDefinitionView.flexible = null
 
         // Create the ProductDefinition, which fails.
 
         restProductDefinitionMockMvc.perform(
             post("/api/product-definitions")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(convertObjectToJsonBytes(productDefinition))
+                .content(convertObjectToJsonBytes(productDefinitionView))
         ).andExpect(status().isBadRequest)
 
         val productDefinitionList = productDefinitionRepository.findAll()
@@ -206,13 +196,13 @@ class ProductDefinitionResourceIT  {
     @Throws(Exception::class)
     fun getAllProductDefinitions() {
         // Initialize the database
-        productDefinitionRepository.saveAndFlush(productDefinition)
-        
+        productDefinitionRepository.saveAndFlush(productDefinitionView)
+
         // Get all the productDefinitionList
         restProductDefinitionMockMvc.perform(get("/api/product-definitions?sort=id,desc"))
             .andExpect(status().isOk)
             .andExpect(content().contentType(MediaType.APPLICATION_JSON_VALUE))
-            .andExpect(jsonPath("$.[*].id").value(hasItem(productDefinition.id?.toInt())))
+            .andExpect(jsonPath("$.[*].id").value(hasItem(productDefinitionView.id?.toInt())))
             .andExpect(jsonPath("$.[*].type").value(hasItem(DEFAULT_TYPE.toString())))
             .andExpect(jsonPath("$.[*].identifier").value(hasItem(DEFAULT_IDENTIFIER)))
             .andExpect(jsonPath("$.[*].name").value(hasItem(DEFAULT_NAME)))
@@ -224,23 +214,23 @@ class ProductDefinitionResourceIT  {
             .andExpect(jsonPath("$.[*].accrueAccountIdentifier").value(hasItem(DEFAULT_ACCRUE_ACCOUNT_IDENTIFIER)))
             .andExpect(jsonPath("$.[*].interest").value(hasItem(DEFAULT_INTEREST.toDouble())))
             .andExpect(jsonPath("$.[*].flexible").value(hasItem(DEFAULT_FLEXIBLE)))
-            .andExpect(jsonPath("$.[*].active").value(hasItem(DEFAULT_ACTIVE)))    }
-    
+            .andExpect(jsonPath("$.[*].active").value(hasItem(DEFAULT_ACTIVE))) }
+
     @Test
     @Transactional
     @Throws(Exception::class)
     fun getProductDefinition() {
         // Initialize the database
-        productDefinitionRepository.saveAndFlush(productDefinition)
+        productDefinitionRepository.saveAndFlush(productDefinitionView)
 
-        val id = productDefinition.id
+        val id = productDefinitionView.id
         assertNotNull(id)
 
         // Get the productDefinition
         restProductDefinitionMockMvc.perform(get("/api/product-definitions/{id}", id))
             .andExpect(status().isOk)
             .andExpect(content().contentType(MediaType.APPLICATION_JSON_VALUE))
-            .andExpect(jsonPath("$.id").value(productDefinition.id?.toInt()))
+            .andExpect(jsonPath("$.id").value(productDefinitionView.id?.toInt()))
             .andExpect(jsonPath("$.type").value(DEFAULT_TYPE.toString()))
             .andExpect(jsonPath("$.identifier").value(DEFAULT_IDENTIFIER))
             .andExpect(jsonPath("$.name").value(DEFAULT_NAME))
@@ -252,7 +242,7 @@ class ProductDefinitionResourceIT  {
             .andExpect(jsonPath("$.accrueAccountIdentifier").value(DEFAULT_ACCRUE_ACCOUNT_IDENTIFIER))
             .andExpect(jsonPath("$.interest").value(DEFAULT_INTEREST.toDouble()))
             .andExpect(jsonPath("$.flexible").value(DEFAULT_FLEXIBLE))
-            .andExpect(jsonPath("$.active").value(DEFAULT_ACTIVE))    }
+            .andExpect(jsonPath("$.active").value(DEFAULT_ACTIVE)) }
 
     @Test
     @Transactional
@@ -266,12 +256,12 @@ class ProductDefinitionResourceIT  {
     @Transactional
     fun updateProductDefinition() {
         // Initialize the database
-        productDefinitionRepository.saveAndFlush(productDefinition)
+        productDefinitionRepository.saveAndFlush(productDefinitionView)
 
         val databaseSizeBeforeUpdate = productDefinitionRepository.findAll().size
 
         // Update the productDefinition
-        val id = productDefinition.id
+        val id = productDefinitionView.id
         assertNotNull(id)
         val updatedProductDefinition = productDefinitionRepository.findById(id).get()
         // Disconnect from session so that the updates on updatedProductDefinition are not directly saved in db
@@ -318,12 +308,11 @@ class ProductDefinitionResourceIT  {
     fun updateNonExistingProductDefinition() {
         val databaseSizeBeforeUpdate = productDefinitionRepository.findAll().size
 
-
         // If the entity doesn't have an ID, it will throw BadRequestAlertException
         restProductDefinitionMockMvc.perform(
             put("/api/product-definitions")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(convertObjectToJsonBytes(productDefinition))
+                .content(convertObjectToJsonBytes(productDefinitionView))
         ).andExpect(status().isBadRequest)
 
         // Validate the ProductDefinition in the database
@@ -336,13 +325,13 @@ class ProductDefinitionResourceIT  {
     @Throws(Exception::class)
     fun deleteProductDefinition() {
         // Initialize the database
-        productDefinitionRepository.saveAndFlush(productDefinition)
+        productDefinitionRepository.saveAndFlush(productDefinitionView)
 
         val databaseSizeBeforeDelete = productDefinitionRepository.findAll().size
 
         // Delete the productDefinition
         restProductDefinitionMockMvc.perform(
-            delete("/api/product-definitions/{id}", productDefinition.id)
+            delete("/api/product-definitions/{id}", productDefinitionView.id)
                 .accept(MediaType.APPLICATION_JSON)
         ).andExpect(status().isNoContent)
 
@@ -350,7 +339,6 @@ class ProductDefinitionResourceIT  {
         val productDefinitionList = productDefinitionRepository.findAll()
         assertThat(productDefinitionList).hasSize(databaseSizeBeforeDelete - 1)
     }
-
 
     companion object {
 
@@ -397,32 +385,32 @@ class ProductDefinitionResourceIT  {
          * if they test an entity which requires the current entity.
          */
         @JvmStatic
-        fun createEntity(em: EntityManager): ProductDefinition {
-            val productDefinition = ProductDefinition(
-                type = DEFAULT_TYPE,
-                identifier = DEFAULT_IDENTIFIER,
-                name = DEFAULT_NAME,
-                description = DEFAULT_DESCRIPTION,
-                minimumBalance = DEFAULT_MINIMUM_BALANCE,
-                equityLedgerIdentifier = DEFAULT_EQUITY_LEDGER_IDENTIFIER,
-                cashAccountIdentifier = DEFAULT_CASH_ACCOUNT_IDENTIFIER,
-                expenseAccountIdentifier = DEFAULT_EXPENSE_ACCOUNT_IDENTIFIER,
-                accrueAccountIdentifier = DEFAULT_ACCRUE_ACCOUNT_IDENTIFIER,
-                interest = DEFAULT_INTEREST,
-                flexible = DEFAULT_FLEXIBLE,
-                active = DEFAULT_ACTIVE
+        fun createEntity(em: EntityManager): ProductDefinitionView {
+            val productDefinition = ProductDefinitionView(
+                    type = DEFAULT_TYPE,
+                    identifier = DEFAULT_IDENTIFIER,
+                    name = DEFAULT_NAME,
+                    description = DEFAULT_DESCRIPTION,
+                    minimumBalance = DEFAULT_MINIMUM_BALANCE,
+                    equityLedgerIdentifier = DEFAULT_EQUITY_LEDGER_IDENTIFIER,
+                    cashAccountIdentifier = DEFAULT_CASH_ACCOUNT_IDENTIFIER,
+                    expenseAccountIdentifier = DEFAULT_EXPENSE_ACCOUNT_IDENTIFIER,
+                    accrueAccountIdentifier = DEFAULT_ACCRUE_ACCOUNT_IDENTIFIER,
+                    interest = DEFAULT_INTEREST,
+                    flexible = DEFAULT_FLEXIBLE,
+                    active = DEFAULT_ACTIVE
             )
 
             // Add required entity
-            val term: Term
-            if (em.findAll(Term::class).isEmpty()) {
-                term = TermResourceIT.createEntity(em)
-                em.persist(term)
+            val termView: TermView
+            if (em.findAll(TermView::class).isEmpty()) {
+                termView = TermResourceIT.createEntity(em)
+                em.persist(termView)
                 em.flush()
             } else {
-                term = em.findAll(Term::class).get(0)
+                termView = em.findAll(TermView::class).get(0)
             }
-            productDefinition.term = term
+            productDefinition.term = termView
             // Add required entity
             val currency: Currency
             if (em.findAll(Currency::class).isEmpty()) {
@@ -443,32 +431,32 @@ class ProductDefinitionResourceIT  {
          * if they test an entity which requires the current entity.
          */
         @JvmStatic
-        fun createUpdatedEntity(em: EntityManager): ProductDefinition {
-            val productDefinition = ProductDefinition(
-                type = UPDATED_TYPE,
-                identifier = UPDATED_IDENTIFIER,
-                name = UPDATED_NAME,
-                description = UPDATED_DESCRIPTION,
-                minimumBalance = UPDATED_MINIMUM_BALANCE,
-                equityLedgerIdentifier = UPDATED_EQUITY_LEDGER_IDENTIFIER,
-                cashAccountIdentifier = UPDATED_CASH_ACCOUNT_IDENTIFIER,
-                expenseAccountIdentifier = UPDATED_EXPENSE_ACCOUNT_IDENTIFIER,
-                accrueAccountIdentifier = UPDATED_ACCRUE_ACCOUNT_IDENTIFIER,
-                interest = UPDATED_INTEREST,
-                flexible = UPDATED_FLEXIBLE,
-                active = UPDATED_ACTIVE
+        fun createUpdatedEntity(em: EntityManager): ProductDefinitionView {
+            val productDefinition = ProductDefinitionView(
+                    type = UPDATED_TYPE,
+                    identifier = UPDATED_IDENTIFIER,
+                    name = UPDATED_NAME,
+                    description = UPDATED_DESCRIPTION,
+                    minimumBalance = UPDATED_MINIMUM_BALANCE,
+                    equityLedgerIdentifier = UPDATED_EQUITY_LEDGER_IDENTIFIER,
+                    cashAccountIdentifier = UPDATED_CASH_ACCOUNT_IDENTIFIER,
+                    expenseAccountIdentifier = UPDATED_EXPENSE_ACCOUNT_IDENTIFIER,
+                    accrueAccountIdentifier = UPDATED_ACCRUE_ACCOUNT_IDENTIFIER,
+                    interest = UPDATED_INTEREST,
+                    flexible = UPDATED_FLEXIBLE,
+                    active = UPDATED_ACTIVE
             )
 
             // Add required entity
-            val term: Term
-            if (em.findAll(Term::class).isEmpty()) {
-                term = TermResourceIT.createUpdatedEntity(em)
-                em.persist(term)
+            val termView: TermView
+            if (em.findAll(TermView::class).isEmpty()) {
+                termView = TermResourceIT.createUpdatedEntity(em)
+                em.persist(termView)
                 em.flush()
             } else {
-                term = em.findAll(Term::class).get(0)
+                termView = em.findAll(TermView::class).get(0)
             }
-            productDefinition.term = term
+            productDefinition.term = termView
             // Add required entity
             val currency: Currency
             if (em.findAll(Currency::class).isEmpty()) {
