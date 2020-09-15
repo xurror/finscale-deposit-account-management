@@ -6,7 +6,7 @@
     xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.9.xsd
                         http://www.liquibase.org/xml/ns/dbchangelog-ext http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-ext.xsd">
 
-    
+
     <!--
         Added the entity ProductDefinition.
     -->
@@ -16,46 +16,55 @@
                 <constraints primaryKey="true" nullable="false"/>
             </column>
             <column name="type" type="varchar(255)">
-                <constraints nullable="true" />
+                <constraints nullable="false" />
             </column>
             <column name="identifier" type="varchar(255)">
-                <constraints nullable="true" />
+                <constraints nullable="false" />
             </column>
             <column name="name" type="varchar(255)">
                 <constraints nullable="false" />
             </column>
             <column name="description" type="varchar(255)">
-                <constraints nullable="true" />
+                <constraints nullable="false" />
             </column>
             <column name="minimum_balance" type="double">
                 <constraints nullable="false" />
             </column>
             <column name="equity_ledger_identifier" type="varchar(255)">
-                <constraints nullable="true" />
+                <constraints nullable="false" />
             </column>
             <column name="cash_account_identifier" type="varchar(255)">
-                <constraints nullable="true" />
+                <constraints nullable="false" />
             </column>
             <column name="expense_account_identifier" type="varchar(255)">
-                <constraints nullable="true" />
+                <constraints nullable="false" />
             </column>
             <column name="accrue_account_identifier" type="varchar(255)">
-                <constraints nullable="true" />
+                <constraints nullable="false" />
+            </column>
+            <column name="product_instance_id" type="varchar(255)">
+                <constraints nullable="false"/>
             </column>
             <column name="interest" type="double">
-                <constraints nullable="true" />
+                <constraints nullable="false" />
             </column>
             <column name="flexible" type="boolean">
                 <constraints nullable="false" />
             </column>
             <column name="active" type="boolean">
-                <constraints nullable="true" />
-            </column>
-            <column name="term_id" type="bigint">
                 <constraints nullable="false" />
             </column>
-            <column name="currency_id" type="bigint">
-                <constraints nullable="false" />
+            <column name="created_by" type="varchar(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_on" type="timestamp">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_modified_by" type="varchar(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_modified_on" type="timestamp">
+                <constraints nullable="false"/>
             </column>
             <!-- jhipster-needle-liquibase-add-column - JHipster will add columns here -->
         </createTable>
@@ -89,11 +98,14 @@
             <column name="cash_account_identifier" type="string"/>
             <column name="expense_account_identifier" type="string"/>
             <column name="accrue_account_identifier" type="string"/>
+            <column name="product_instance_id" type="string"/>
             <column name="interest" type="numeric"/>
             <column name="flexible" type="boolean"/>
             <column name="active" type="boolean"/>
-            <column name="term_id" type="numeric"/>
-            <column name="currency_id" type="numeric"/>
+            <column name="created_by" type="string"/>
+            <column name="created_on" type="date"/>
+            <column name="last_modified_by" type="string"/>
+            <column name="last_modified_on" type="date"/>
             <!-- jhipster-needle-liquibase-add-loadcolumn - JHipster (and/or extensions) can add load columns here -->
         </loadData>
     </changeSet>
