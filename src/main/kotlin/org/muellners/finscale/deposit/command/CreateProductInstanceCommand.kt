@@ -2,12 +2,11 @@ package org.muellners.finscale.deposit.command
 
 import java.util.*
 import org.axonframework.modelling.command.TargetAggregateIdentifier
-import org.muellners.finscale.deposit.domain.productInstance.commands.ProductDefinition
 
 data class CreateProductInstanceCommand(
     @TargetAggregateIdentifier
     val id: UUID?,
-    val productDefinition: ProductDefinition?,
+    val productDefinitionId: String?,
     val customerIdentifier: String?,
     val accountIdentifier: String?,
     val beneficiaries: String?,

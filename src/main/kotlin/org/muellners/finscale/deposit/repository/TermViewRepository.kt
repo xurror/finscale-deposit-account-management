@@ -1,7 +1,7 @@
 package org.muellners.finscale.deposit.repository
 
-import org.muellners.finscale.deposit.views.ProductDefinitionView
-import org.muellners.finscale.deposit.views.TermView
+import org.muellners.finscale.deposit.view.ProductDefinitionView
+import org.muellners.finscale.deposit.view.TermView
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.stereotype.Repository
 
@@ -10,6 +10,6 @@ import org.springframework.stereotype.Repository
  */
 @Suppress("unused")
 @Repository
-interface TermRepository : JpaRepository<TermView, String> {
+interface TermViewRepository : JpaRepository<TermView, String> {
     fun findByProductDefinitionView(productDefinitionView: ProductDefinitionView): TermView
 }

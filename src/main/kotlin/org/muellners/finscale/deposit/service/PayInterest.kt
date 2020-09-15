@@ -7,28 +7,28 @@ import org.axonframework.eventsourcing.EventSourcingHandler
 import org.axonframework.modelling.command.AggregateIdentifier
 import org.axonframework.modelling.command.AggregateLifecycle
 import org.axonframework.spring.stereotype.Aggregate
-import org.muellners.finscale.deposit.command.AccrualCommand
-import org.muellners.finscale.deposit.event.AccruedEvent
+import org.muellners.finscale.deposit.command.PayInterestCommand
+import org.muellners.finscale.deposit.event.PaidInterestEvent
 
 @Aggregate
-class Accrual() {
+class PayInterest() {
     @AggregateIdentifier
     var id: UUID? = null
-    var dueDate: LocalDate? = null
+    var date: LocalDate? = null
 
     @CommandHandler
-    constructor(command: AccrualCommand) : this() {
+    constructor(command: PayInterestCommand) : this() {
         AggregateLifecycle.apply(
-            AccruedEvent(
+            PaidInterestEvent(
                 id = command.id,
-                dueDate = command.dueDate
+                date = command.date
             )
         )
     }
 
     @EventSourcingHandler
-    fun on(event: AccruedEvent) {
+    fun on(event: PaidInterestEvent) {
         this.id = event.id
-        this.dueDate = event.dueDate
+        this.date = event.date
     }
 }

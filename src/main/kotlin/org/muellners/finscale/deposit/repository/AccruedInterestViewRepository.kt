@@ -1,8 +1,7 @@
 package org.muellners.finscale.deposit.repository
 
-import org.muellners.finscale.deposit.domain.Action
-import org.muellners.finscale.deposit.views.ProductDefinitionView
-import org.muellners.finscale.deposit.views.TermView
+import java.util.*
+import org.muellners.finscale.deposit.view.AccruedInterestView
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.stereotype.Repository
 
@@ -11,6 +10,6 @@ import org.springframework.stereotype.Repository
  */
 @Suppress("unused")
 @Repository
-interface AccruedInterestViewRepository : JpaRepository<Action, Long> {
-    fun findByCustomerAccountIdentifier(customerAccountIdentifier: String): TermView
+interface AccruedInterestViewRepository : JpaRepository<AccruedInterestView, String> {
+    fun findByCustomerAccountIdentifier(customerAccountIdentifier: String): Optional<AccruedInterestView>
 }

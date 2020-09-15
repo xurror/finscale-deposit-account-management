@@ -1,4 +1,4 @@
-package org.muellners.finscale.deposit.views
+package org.muellners.finscale.deposit.view
 
 import java.io.Serializable
 import javax.persistence.*

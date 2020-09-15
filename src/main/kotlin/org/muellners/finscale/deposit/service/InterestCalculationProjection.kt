@@ -1,6 +1,5 @@
 package org.muellners.finscale.deposit.service
 
-import com.google.common.collect.Sets
 import java.math.BigDecimal
 import java.math.MathContext
 import java.time.Clock
@@ -10,31 +9,36 @@ import java.util.*
 import java.util.function.Consumer
 import java.util.stream.Collectors
 import java.util.stream.IntStream
-import org.apache.commons.lang3.RandomStringUtils
+import org.axonframework.commandhandling.gateway.CommandGateway
 import org.axonframework.eventhandling.EventHandler
+import org.axonframework.messaging.responsetypes.ResponseTypes
+import org.axonframework.queryhandling.QueryGateway
+import org.muellners.finscale.deposit.command.PostJournalEntryCommand
 import org.muellners.finscale.deposit.domain.enumeration.InterestPayable
 import org.muellners.finscale.deposit.domain.enumeration.Type
-import org.muellners.finscale.deposit.domain.productInstance.commands.ProductDefinition
 import org.muellners.finscale.deposit.event.AccruedEvent
 import org.muellners.finscale.deposit.event.DividendDistributedEvent
 import org.muellners.finscale.deposit.event.PaidInterestEvent
+import org.muellners.finscale.deposit.query.FindAllLedgerAccountEntriesQuery
+import org.muellners.finscale.deposit.query.FindLedgerAccountQuery
 import org.muellners.finscale.deposit.repository.*
 import org.muellners.finscale.deposit.view.AccruedInterestView
 import org.muellners.finscale.deposit.view.DividendDistributionView
 import org.muellners.finscale.deposit.view.ProductDefinitionView
 import org.muellners.finscale.deposit.view.ProductInstanceView
 import org.muellners.finscale.deposit.view.TermView
-import org.springframework.data.domain.Sort
 import org.springframework.stereotype.Component
 import org.threeten.extra.YearQuarter
 
 @Component
-class InterestCalculationProjector(
+class InterestCalculationProjection(
     private val productDefinitionViewRepository: ProductDefinitionViewRepository,
     private val productInstanceViewRepository: ProductInstanceViewRepository,
     private val termViewRepository: TermViewRepository,
     private val accruedInterestViewRepository: AccruedInterestViewRepository,
-    private val dividendDistributionViewRepository: DividendDistributionViewRepository
+    private val dividendDistributionViewRepository: DividendDistributionViewRepository,
+    private val queryGateway: QueryGateway,
+    private val commandGateway: CommandGateway
 ) {
     @EventHandler
     fun on(event: AccruedEvent): String {
@@ -47,25 +51,28 @@ class InterestCalculationProjector(
                 val productInstances: List<ProductInstanceView> = productInstanceViewRepository.findByProductDefinitionView(productDefinitionView)
                 productInstances.forEach(Consumer<ProductInstanceView> { productInstanceView: ProductInstanceView ->
                     if (productInstanceView.state!!.equals(ACTIVE)) {
-                        val account: Account = accountingService.findAccount(productInstanceView.accountIdentifier)
-                        if (account.getBalance() > 0.00) {
-                            val balance: BigDecimal = BigDecimal.valueOf(account.getBalance())
+                        val account = queryGateway.query<Account, FindLedgerAccountQuery>(
+                            FindLedgerAccountQuery(UUID.fromString(productInstanceView.accountIdentifier)),
+                            ResponseTypes.instanceOf(Account::class.java)
+                        ).join()
+                        if (account.balance!! > BigDecimal.valueOf(0.00)) {
+                            val balance: BigDecimal = account.balance!!
                             val rate: BigDecimal = BigDecimal.valueOf(productDefinitionView.interest!!)
                                 .divide(BigDecimal.valueOf(100), INTEREST_PRECISION, BigDecimal.ROUND_HALF_EVEN)
                             val accruedInterest = accruedInterest(balance, rate,
                                 periodOfInterestPayable(termView.interestPayable.toString()), accrualDate!!.lengthOfYear())
-                            if (accruedInterest.compareTo(BigDecimal.ZERO) > 0) {
+                            if (accruedInterest > BigDecimal.ZERO) {
                                 val doubleValue = accruedInterest.setScale(5, BigDecimal.ROUND_HALF_EVEN).toDouble()
                                 accruedValues.add(doubleValue)
-                                val optionalAccruedInterest: Optional<AccruedInterestView> = accruedInterestViewRepository.findByCustomerAccountIdentifier(account.getIdentifier())
-                                if (optionalAccruedInterest.isPresent()) {
+                                val optionalAccruedInterest: Optional<AccruedInterestView> = accruedInterestViewRepository.findByCustomerAccountIdentifier(account.identifier!!)
+                                if (optionalAccruedInterest.isPresent) {
                                     val accruedInterestView: AccruedInterestView = optionalAccruedInterest.get()
                                     accruedInterestView.amount = accruedInterestView.amount?.plus(doubleValue)
                                     accruedInterestViewRepository.save(accruedInterestView)
                                 } else {
                                     val accruedInterestView = AccruedInterestView()
                                     accruedInterestView.accrueAccountIdentifier = productDefinitionView.accrueAccountIdentifier
-                                    accruedInterestView.customerAccountIdentifier = account.getIdentifier()
+                                    accruedInterestView.customerAccountIdentifier = account.identifier
                                     accruedInterestView.amount = doubleValue
                                     accruedInterestViewRepository.save(accruedInterestView)
                                 }
@@ -74,25 +81,23 @@ class InterestCalculationProjector(
                     }
                 })
                 val roundedAmount = BigDecimal.valueOf(accruedValues.parallelStream().reduce(0.00) { a: Double, b: Double -> java.lang.Double.sum(a, b) })
-                    .setScale(2, BigDecimal.ROUND_HALF_EVEN).toString()
-                val cashToAccrueJournalEntry = JournalEntry()
-                cashToAccrueJournalEntry.setTransactionIdentifier(RandomStringUtils.randomAlphanumeric(32))
-                cashToAccrueJournalEntry.setTransactionDate(DateConverter.toIsoString(LocalDateTime.now(Clock.systemUTC())))
-                cashToAccrueJournalEntry.setTransactionType("INTR")
-                cashToAccrueJournalEntry.setClerk(UserContextHolder.checkedGetUser())
-                cashToAccrueJournalEntry.setNote("Daily accrual for product " + productDefinitionView.identifier.toString() + ".")
-                val cashDebtor = Debtor()
-                cashDebtor.setAccountNumber(productDefinitionView.cashAccountIdentifier)
-                cashDebtor.setAmount(roundedAmount)
-                cashToAccrueJournalEntry.setDebtors(Sets.newHashSet(cashDebtor))
-                val accrueCreditor = Creditor()
-                accrueCreditor.setAccountNumber(productDefinitionView.accrueAccountIdentifier)
-                accrueCreditor.setAmount(roundedAmount)
-                cashToAccrueJournalEntry.setCreditors(Sets.newHashSet(accrueCreditor))
-                accountingService.post(cashToAccrueJournalEntry)
+                    .setScale(2, BigDecimal.ROUND_HALF_EVEN)
+                val cashToAccrueJournalEntryCommand = PostJournalEntryCommand()
+                cashToAccrueJournalEntryCommand.transactionDate = LocalDateTime.now(Clock.systemUTC()).toLocalDate()
+                cashToAccrueJournalEntryCommand.transactionTypeId = UUID.fromString("INTR")
+                cashToAccrueJournalEntryCommand.note = "Daily accrual for product " + productDefinitionView.identifier.toString() + "."
+
+                val cashDebtorAccountId = UUID.fromString(productDefinitionView.cashAccountIdentifier)
+                cashToAccrueJournalEntryCommand.debtors[cashDebtorAccountId] = roundedAmount
+
+//                val accrueCreditor = TransactionDTO()
+                val accrueCreditorAccountId = UUID.fromString(productDefinitionView.accrueAccountIdentifier)
+                cashToAccrueJournalEntryCommand.creditors[accrueCreditorAccountId] = roundedAmount
+
+                commandGateway.send<Any>(cashToAccrueJournalEntryCommand)
             }
         })
-        return DateConverter.toIsoString(accrualDate)
+        return accrualDate.toString()
     }
 
     @EventHandler
@@ -108,24 +113,23 @@ class InterestCalculationProjector(
                         val optionalAccruedInterestView: Optional<AccruedInterestView> = accruedInterestViewRepository.findByCustomerAccountIdentifier(productInstanceView.accountIdentifier!!)
                         if (optionalAccruedInterestView.isPresent) {
                             val accruedInterestView: AccruedInterestView = optionalAccruedInterestView.get()
-                            val roundedAmount: String = BigDecimal.valueOf(accruedInterestView.amount!!)
-                                .setScale(2, BigDecimal.ROUND_HALF_EVEN).toString()
-                            val accrueToExpenseJournalEntry = JournalEntry()
-                            accrueToExpenseJournalEntry.setTransactionIdentifier(RandomStringUtils.randomAlphanumeric(32))
-                            accrueToExpenseJournalEntry.setTransactionDate(DateConverter.toIsoString(LocalDateTime.now(Clock.systemUTC())))
-                            accrueToExpenseJournalEntry.setTransactionType("INTR")
-                            accrueToExpenseJournalEntry.setClerk(UserContextHolder.checkedGetUser())
-                            accrueToExpenseJournalEntry.setNote("Interest paid.")
-                            val accrueDebtor = Debtor()
-                            accrueDebtor.setAccountNumber(accruedInterestView.accrueAccountIdentifier)
-                            accrueDebtor.setAmount(roundedAmount)
-                            accrueToExpenseJournalEntry.setDebtors(Sets.newHashSet(accrueDebtor))
-                            val expenseCreditor = Creditor()
-                            expenseCreditor.setAccountNumber(productDefinitionView.expenseAccountIdentifier)
-                            expenseCreditor.setAmount(roundedAmount)
-                            accrueToExpenseJournalEntry.setCreditors(Sets.newHashSet(expenseCreditor))
+                            val roundedAmount = BigDecimal.valueOf(accruedInterestView.amount!!)
+                                .setScale(2, BigDecimal.ROUND_HALF_EVEN)
+                            val accrueToExpenseJournalEntry = PostJournalEntryCommand()
+                            accrueToExpenseJournalEntry.transactionDate = LocalDateTime.now(Clock.systemUTC()).toLocalDate()
+                            accrueToExpenseJournalEntry.transactionTypeId = UUID.fromString("INTR")
+                            accrueToExpenseJournalEntry.note = "Interest paid."
+
+//                            val accrueDebtor = TransactionDTO()
+                            val accrueDebtorAccountId = UUID.fromString(accruedInterestView.accrueAccountIdentifier)
+                            accrueToExpenseJournalEntry.debtors[accrueDebtorAccountId] = roundedAmount
+
+//                            val expenseCreditor = TransactionDTO()
+                            val expenseCreditorAccountId = UUID.fromString(productDefinitionView.expenseAccountIdentifier)
+                            accrueToExpenseJournalEntry.creditors[expenseCreditorAccountId] = roundedAmount
+
                             accruedInterestViewRepository.delete(accruedInterestView)
-                            accountingService.post(accrueToExpenseJournalEntry)
+                            commandGateway.send<Any>(accrueToExpenseJournalEntry)
                             payoutInterest(
                                 productDefinitionView.expenseAccountIdentifier!!,
                                 accruedInterestView.customerAccountIdentifier!!,
@@ -136,13 +140,13 @@ class InterestCalculationProjector(
                 }
             }
         })
-        return EventConstants.INTEREST_PAYED
+        return "interest-payed"
     }
 
     @EventHandler
-    fun on(event: DividendDistributedEvent): ProductDefinition? {
-        val optionalProductDefinition: Optional<ProductDefinitionView> = productDefinitionViewRepository.findByIdentifier(event.productDefinition!!)
-        if (optionalProductDefinition.isPresent()) {
+    fun on(event: DividendDistributedEvent) {
+        val optionalProductDefinition: Optional<ProductDefinitionView> = productDefinitionViewRepository.findByIdentifier(event.productDefinitionId!!)
+        if (optionalProductDefinition.isPresent) {
             val productDefinitionView: ProductDefinitionView = optionalProductDefinition.get()
             if (productDefinitionView.active!!) {
                 val rate: BigDecimal = BigDecimal.valueOf(event.rate!!)
@@ -150,24 +154,33 @@ class InterestCalculationProjector(
                 val dateRanges = dateRanges(event.dueDate!!, termView.interestPayable!!.toString())
                 val productInstanceEntities: List<ProductInstanceView> = productInstanceViewRepository.findByProductDefinitionView(productDefinitionView)
                 productInstanceEntities.forEach { productInstanceView: ProductInstanceView ->
-                    if (productInstanceView.state.equals(ACTIVE)) {
-                        val account: Account = accountingService.findAccount(productInstanceView.accountIdentifier)
+                    if (productInstanceView.state!!.equals(ACTIVE)) {
+                        val account = queryGateway.query<Account, FindLedgerAccountQuery>(
+                            FindLedgerAccountQuery(UUID.fromString(productInstanceView.accountIdentifier)),
+                            ResponseTypes.instanceOf(Account::class.java)
+                        ).join()
                         val startDate: LocalDate = event.dueDate!!.plusDays(1)
                         val now: LocalDate = LocalDate.now(Clock.systemUTC())
-                        val findCurrentEntries: String = DateConverter.toIsoString(startDate).toString() + ".." + DateConverter.toIsoString(now)
-                        val currentAccountEntries: List<AccountEntry> = accountingService.fetchEntries(account.getIdentifier(), findCurrentEntries, Sort.Direction.ASC.name)
+                        val findCurrentEntries: String = "$startDate..$now"
+                        val currentAccountEntries: List<AccountEntry> = queryGateway.query<List<AccountEntry>, FindAllLedgerAccountEntriesQuery>(
+                            FindAllLedgerAccountEntriesQuery(UUID.fromString(account.identifier)),
+                            ResponseTypes.multipleInstancesOf(AccountEntry::class.java)
+                        ).join()
                         val balanceHolder: BalanceHolder
                         balanceHolder = if (currentAccountEntries.isEmpty()) {
-                            BalanceHolder(BigDecimal.valueOf(account.getBalance()))
+                            BalanceHolder(account.balance!!)
                         } else {
                             val accountEntry: AccountEntry = currentAccountEntries[0]
-                            BalanceHolder(BigDecimal.valueOf(accountEntry.getBalance()).subtract(BigDecimal.valueOf(accountEntry.getAmount())))
+                            BalanceHolder(accountEntry.balance!!.subtract(accountEntry.amount))
                         }
                         val dividendHolder = DividendHolder()
-                        dateRanges.forEach(Consumer { dateRange: String? ->
-                            val accountEntries: List<AccountEntry> = accountingService.fetchEntries(account.getIdentifier(), dateRange, Sort.Direction.DESC.name)
+                        dateRanges.forEach(Consumer {
+                            val accountEntries: List<AccountEntry> = queryGateway.query<List<AccountEntry>, FindAllLedgerAccountEntriesQuery>(
+                                FindAllLedgerAccountEntriesQuery(UUID.fromString(account.identifier)),
+                                ResponseTypes.multipleInstancesOf(AccountEntry::class.java)
+                            ).join()
                             if (accountEntries.isNotEmpty()) {
-                                balanceHolder.balance = BigDecimal.valueOf(accountEntries[0].getBalance())
+                                balanceHolder.balance = accountEntries[0].balance!!
                             }
                             val currentBalance: BigDecimal = balanceHolder.balance
                             dividendHolder.addAmount(
@@ -175,26 +188,22 @@ class InterestCalculationProjector(
                             )
                         })
                         if (dividendHolder.amount > BigDecimal.ZERO) {
-                            val roundedAmount: String = dividendHolder.amount
-                                .setScale(2, BigDecimal.ROUND_HALF_EVEN).toString()
-                            val cashToExpenseJournalEntry = JournalEntry()
-                            cashToExpenseJournalEntry.setTransactionIdentifier(RandomStringUtils.randomAlphanumeric(32))
-                            cashToExpenseJournalEntry.setTransactionDate(DateConverter.toIsoString(now))
-                            cashToExpenseJournalEntry.setTransactionType("INTR")
-                            cashToExpenseJournalEntry.setClerk(UserContextHolder.checkedGetUser())
-                            cashToExpenseJournalEntry.setNote("Dividend distribution.")
-                            val cashDebtor = Debtor()
-                            cashDebtor.setAccountNumber(productDefinitionView.cashAccountIdentifier)
-                            cashDebtor.setAmount(roundedAmount)
-                            cashToExpenseJournalEntry.setDebtors(Sets.newHashSet(cashDebtor))
-                            val expenseCreditor = Creditor()
-                            expenseCreditor.setAccountNumber(productDefinitionView.expenseAccountIdentifier)
-                            expenseCreditor.setAmount(roundedAmount)
-                            cashToExpenseJournalEntry.setCreditors(Sets.newHashSet(expenseCreditor))
-                            accountingService.post(cashToExpenseJournalEntry)
+                            val roundedAmount = dividendHolder.amount
+                                .setScale(2, BigDecimal.ROUND_HALF_EVEN)
+                            val cashToExpenseJournalEntryCommand = PostJournalEntryCommand()
+                            cashToExpenseJournalEntryCommand.transactionDate = now
+                            cashToExpenseJournalEntryCommand.transactionTypeId = UUID.fromString("INTR")
+                            cashToExpenseJournalEntryCommand.note = "Dividend distribution."
+
+                            val cashDebtorAccountId = UUID.fromString(productDefinitionView.cashAccountIdentifier)
+                            cashToExpenseJournalEntryCommand.debtors[cashDebtorAccountId] = roundedAmount
+
+                            val expenseCreditorAccountId = UUID.fromString(productDefinitionView.expenseAccountIdentifier)
+                            cashToExpenseJournalEntryCommand.creditors[expenseCreditorAccountId] = roundedAmount
+                            commandGateway.send<Any>(cashToExpenseJournalEntryCommand)
                             payoutInterest(
                                 productDefinitionView.expenseAccountIdentifier!!,
-                                account.getIdentifier(),
+                                account.identifier!!,
                                 roundedAmount
                             )
                         }
@@ -202,14 +211,10 @@ class InterestCalculationProjector(
                 }
             }
             val dividendDistributionView = DividendDistributionView()
-            dividendDistributionView.productDefinition = productDefinitionView
             dividendDistributionView.dueDate = event.dueDate
             dividendDistributionView.rate = event.rate
-            dividendDistributionView.createdOn = LocalDateTime.now(Clock.systemUTC())
-            dividendDistributionView.createdBy = UserContextHolder.checkedGetUser()
             dividendDistributionViewRepository.save<DividendDistributionView>(dividendDistributionView)
         }
-        return event.productDefinition
     }
 
     private fun periodOfInterestPayable(interestPayable: String): Int {
@@ -222,7 +227,7 @@ class InterestCalculationProjector(
 
     private fun shouldPayInterest(interestPayable: String, date: LocalDate): Boolean {
         return when (InterestPayable.valueOf(interestPayable)) {
-            InterestPayable.MONTHLY -> date.equals(date.withDayOfMonth(date.lengthOfMonth()))
+            InterestPayable.MONTHLY -> date == date.withDayOfMonth(date.lengthOfMonth())
             InterestPayable.QUARTERLY -> date == YearQuarter.from(date).atEndOfQuarter()
             InterestPayable.ANNUALLY -> date.dayOfYear == date.lengthOfYear()
             else -> false
@@ -230,8 +235,7 @@ class InterestCalculationProjector(
     }
 
     private fun dateRanges(dueDate: LocalDate, interestPayable: String): List<String> {
-        val pastDays: Int
-        pastDays = when (InterestPayable.valueOf(interestPayable)) {
+        val pastDays: Int = when (InterestPayable.valueOf(interestPayable)) {
             InterestPayable.MONTHLY -> dueDate.lengthOfMonth()
             InterestPayable.QUARTERLY -> YearQuarter.from(dueDate).lengthOfQuarter()
             else -> dueDate.lengthOfYear()
@@ -240,7 +244,7 @@ class InterestCalculationProjector(
             .range(1, pastDays)
             .mapToObj { value ->
                 val before: LocalDate = dueDate.minusDays(value.toLong())
-                DateConverter.toIsoString(before).toString() + ".." + DateConverter.toIsoString(dueDate.minusDays((value - 1).toLong()))
+                before.toString() + ".." + dueDate.minusDays((value - 1).toLong())
             }.collect(Collectors.toList())
     }
 
@@ -263,22 +267,21 @@ class InterestCalculationProjector(
             productDefinitionView.interest != null && productDefinitionView.interest!! > 0.00)
     }
 
-    private fun payoutInterest(expenseAccount: String, customerAccount: String, amount: String) {
-        val expenseToCustomerJournalEntry = JournalEntry()
-        expenseToCustomerJournalEntry.setTransactionIdentifier(RandomStringUtils.randomAlphanumeric(32))
-        expenseToCustomerJournalEntry.setTransactionDate(DateConverter.toIsoString(LocalDateTime.now(Clock.systemUTC())))
-        expenseToCustomerJournalEntry.setTransactionType("INTR")
-        expenseToCustomerJournalEntry.setClerk(UserContextHolder.checkedGetUser())
-        expenseToCustomerJournalEntry.setNote("Interest paid.")
-        val expenseDebtor = Debtor()
-        expenseDebtor.setAccountNumber(expenseAccount)
-        expenseDebtor.setAmount(amount)
-        expenseToCustomerJournalEntry.setDebtors(Sets.newHashSet(expenseDebtor))
-        val customerCreditor = Creditor()
-        customerCreditor.setAccountNumber(customerAccount)
-        customerCreditor.setAmount(amount)
-        expenseToCustomerJournalEntry.setCreditors(Sets.newHashSet(customerCreditor))
-        accountingService.post(expenseToCustomerJournalEntry)
+    private fun payoutInterest(expenseAccount: String, customerAccount: String, amount: BigDecimal) {
+        val expenseToCustomerJournalEntryCommand = PostJournalEntryCommand()
+        expenseToCustomerJournalEntryCommand.transactionDate = LocalDateTime.now(Clock.systemUTC()).toLocalDate()
+        expenseToCustomerJournalEntryCommand.transactionTypeId = UUID.fromString("INTR")
+        expenseToCustomerJournalEntryCommand.note = "Interest paid."
+
+//        val expenseDebtor = TransactionDTO()
+        val expenseDebtorAccountId = UUID.fromString(expenseAccount)
+        expenseToCustomerJournalEntryCommand.debtors.put(expenseDebtorAccountId, amount)
+
+//        val customerCreditor = TransactionDTO()
+        val customerCreditorAccountId = UUID.fromString(customerAccount)
+        expenseToCustomerJournalEntryCommand.creditors[customerCreditorAccountId] = amount
+
+        commandGateway.send<Any>(expenseToCustomerJournalEntryCommand)
     }
 
     companion object {

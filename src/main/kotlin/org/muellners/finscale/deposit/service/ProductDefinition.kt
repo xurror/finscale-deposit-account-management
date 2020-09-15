@@ -6,12 +6,12 @@ import org.axonframework.eventsourcing.EventSourcingHandler
 import org.axonframework.modelling.command.AggregateIdentifier
 import org.axonframework.modelling.command.AggregateLifecycle
 import org.axonframework.spring.stereotype.Aggregate
-import org.muellners.finscale.deposit.commands.*
+import org.muellners.finscale.deposit.command.*
 import org.muellners.finscale.deposit.domain.enumeration.Type
-import org.muellners.finscale.deposit.events.CreatedProductDefinitionEvent
-import org.muellners.finscale.deposit.events.DeletedProductDefinitionEvent
-import org.muellners.finscale.deposit.events.PerformedActionProductDefinitionEvent
-import org.muellners.finscale.deposit.events.UpdatedProductDefinitionEvent
+import org.muellners.finscale.deposit.event.CreatedProductDefinitionEvent
+import org.muellners.finscale.deposit.event.DeletedProductDefinitionEvent
+import org.muellners.finscale.deposit.event.PerformedActionProductDefinitionEvent
+import org.muellners.finscale.deposit.event.UpdatedProductDefinitionEvent
 import org.springframework.lang.NonNull
 
 @Aggregate

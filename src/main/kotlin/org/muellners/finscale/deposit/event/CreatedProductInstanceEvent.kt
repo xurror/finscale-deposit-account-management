@@ -1,11 +1,10 @@
 package org.muellners.finscale.deposit.event
 
 import java.util.*
-import org.muellners.finscale.deposit.domain.productInstance.commands.ProductDefinition
 
 data class CreatedProductInstanceEvent(
     val id: UUID?,
-    val productDefinition: ProductDefinition?,
+    val productDefinitionId: String?,
     val customerIdentifier: String?,
     val accountIdentifier: String?,
     val beneficiaries: String?,

@@ -1,6 +1,7 @@
 package org.muellners.finscale.deposit.repository
 
-import org.muellners.finscale.deposit.views.ProductInstanceView
+import org.muellners.finscale.deposit.view.ProductDefinitionView
+import org.muellners.finscale.deposit.view.ProductInstanceView
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.stereotype.Repository
 
@@ -9,4 +10,6 @@ import org.springframework.stereotype.Repository
  */
 @Suppress("unused")
 @Repository
-interface ProductInstanceViewRepository : JpaRepository<ProductInstanceView, String>
+interface ProductInstanceViewRepository : JpaRepository<ProductInstanceView, String> {
+    fun findByProductDefinitionView(productDefinitionEntity: ProductDefinitionView): List<ProductInstanceView>
+}

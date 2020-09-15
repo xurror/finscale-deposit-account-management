@@ -10,7 +10,7 @@ import org.muellners.finscale.deposit.view.ActionView
 import org.springframework.stereotype.Component
 
 @Component
-class ActionProjector(
+class ActionProjection(
     val actionViewRepository: ActionViewRepository,
     val actionMapper: ActionMapper
 ) {

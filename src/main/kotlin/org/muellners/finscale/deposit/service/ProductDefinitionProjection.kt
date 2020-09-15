@@ -1,5 +1,6 @@
 package org.muellners.finscale.deposit.service
 
+import java.lang.IllegalStateException
 import org.axonframework.eventhandling.EventHandler
 import org.axonframework.queryhandling.QueryHandler
 import org.muellners.finscale.deposit.domain.productInstance.commands.ProductDefinition
@@ -16,10 +17,9 @@ import org.muellners.finscale.deposit.service.mapper.DividendDistributionMapper
 import org.muellners.finscale.deposit.service.mapper.ProductDefinitionMapper
 import org.muellners.finscale.deposit.view.ProductDefinitionView
 import org.springframework.stereotype.Component
-import java.lang.IllegalStateException
 
 @Component
-class ProductDefinitionProjector(
+class ProductDefinitionProjection(
     val productDefinitionViewRepository: ProductDefinitionViewRepository,
     val dividendDistributionViewRepository: DividendDistributionViewRepository,
     val productDefinitionMapper: ProductDefinitionMapper,
@@ -77,8 +77,13 @@ class ProductDefinitionProjector(
     }
 
     @QueryHandler
-    fun handle(query: GetAllProductDefinitionsQuery): MutableList<ProductDefinitionView> {
-        return productDefinitionViewRepository.findAll()
+    fun handle(query: GetAllProductDefinitionsQuery): MutableList<ProductDefinition> {
+        val productDefinitionViews = productDefinitionViewRepository.findAll()
+        val productDefinitions: MutableList<ProductDefinition> = mutableListOf()
+        productDefinitionViews.forEach {
+            productDefinitions.add(productDefinitionMapper.map(it))
+        }
+        return productDefinitions
     }
 
     @QueryHandler

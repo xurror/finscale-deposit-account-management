@@ -6,15 +6,14 @@ import org.axonframework.eventsourcing.EventSourcingHandler
 import org.axonframework.modelling.command.AggregateIdentifier
 import org.axonframework.modelling.command.AggregateLifecycle
 import org.axonframework.spring.stereotype.Aggregate
-import org.muellners.finscale.deposit.commands.*
-import org.muellners.finscale.deposit.domain.productInstance.commands.ProductDefinition
-import org.muellners.finscale.deposit.events.*
+import org.muellners.finscale.deposit.command.*
+import org.muellners.finscale.deposit.event.*
 
 @Aggregate
 class ProductInstance() {
     @AggregateIdentifier
     var id: UUID? = null
-    var productDefinition: ProductDefinition? = null
+    var productDefinitionId: String? = null
     var customerIdentifier: String? = null
     var accountIdentifier: String? = null
     var beneficiaries: String? = null
@@ -33,7 +32,7 @@ class ProductInstance() {
             throw IllegalArgumentException("Customer identifier cannot be null!")
         }
 
-        if (command.productDefinition == null) {
+        if (command.productDefinitionId == null) {
             throw IllegalArgumentException("Product definition cannot be null!")
         }
 
@@ -44,7 +43,7 @@ class ProductInstance() {
         AggregateLifecycle.apply(
             CreatedProductInstanceEvent(
                 id = command.id,
-                productDefinition = command.productDefinition,
+                productDefinitionId = command.productDefinitionId,
                 customerIdentifier = command.customerIdentifier,
                 accountIdentifier = command.accountIdentifier,
                 beneficiaries = command.beneficiaries,
@@ -60,7 +59,7 @@ class ProductInstance() {
         AggregateLifecycle.apply(
             UpdatedProductInstanceEvent(
                 id = command.id,
-                productDefinition = command.productDefinition,
+                productDefinitionId = command.productDefinitionId,
                 customerIdentifier = command.customerIdentifier,
                 accountIdentifier = command.accountIdentifier,
                 beneficiaries = command.beneficiaries,
@@ -110,7 +109,7 @@ class ProductInstance() {
     @EventSourcingHandler
     fun on(event: CreatedProductInstanceEvent) {
         this.id = event.id
-        this.productDefinition = event.productDefinition
+        this.productDefinitionId = event.productDefinitionId
         this.customerIdentifier = event.customerIdentifier
         this.accountIdentifier = event.accountIdentifier
         this.beneficiaries = event.beneficiaries
@@ -122,7 +121,7 @@ class ProductInstance() {
     @EventSourcingHandler
     fun on(event: UpdatedProductInstanceEvent) {
         this.id = event.id
-        this.productDefinition = event.productDefinition
+        this.productDefinitionId = event.productDefinitionId
         this.customerIdentifier = event.customerIdentifier
         this.accountIdentifier = event.accountIdentifier
         this.beneficiaries = event.beneficiaries

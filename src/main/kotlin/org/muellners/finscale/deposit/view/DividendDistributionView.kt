@@ -1,12 +1,14 @@
-package org.muellners.finscale.deposit.views
+package org.muellners.finscale.deposit.view
 
 import java.io.Serializable
 import java.time.LocalDate
-import java.time.LocalDateTime
+import java.util.*
 import javax.persistence.*
 import javax.validation.constraints.*
 import org.hibernate.annotations.Cache
 import org.hibernate.annotations.CacheConcurrencyStrategy
+import org.springframework.data.annotation.CreatedBy
+import org.springframework.data.annotation.CreatedDate
 
 /**
  * A DividendDistribution.
@@ -20,7 +22,7 @@ data class DividendDistributionView(
 
     @ManyToOne(fetch = FetchType.EAGER, optional = false, cascade = [CascadeType.ALL])
     @JoinColumn(name = "product_definition_id", nullable = false)
-    var productDefinition: ProductDefinitionView,
+    var productDefinitionView: ProductDefinitionView?,
 
     @get: NotNull
     @Column(name = "due_date", nullable = false)
@@ -30,13 +32,25 @@ data class DividendDistributionView(
     @Column(name = "rate", nullable = false)
     var rate: Double? = null,
 
-    @Column(name = "created_by", nullable = false, length = 32)
+    @CreatedBy
+    @Column(name = "created_by", insertable = false, updatable = false)
     var createdBy: String? = null,
 
-    @Column(name = "created_on", nullable = false)
-    var createdOn: LocalDateTime? = null
+    @CreatedDate
+    @Column(name = "created_on", insertable = false, updatable = false)
+    @Temporal(TemporalType.TIMESTAMP)
+    var createdOn: Date? = null
 
 ) : Serializable {
+
+    constructor() : this(id = null, productDefinitionView = null, dueDate = null, rate = null, createdBy = null, createdOn = null) {
+        var id: String? = null
+        var productDefinitionView: ProductDefinitionView
+        var dueDate: LocalDate? = null
+        var rate: Double? = null
+        var createdBy: String? = null
+        var createdOn: Date? = null
+    }
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -49,7 +63,7 @@ data class DividendDistributionView(
 
     override fun toString() = "DividendDistribution{" +
         "id=$id" +
-        ", productDefinition='$productDefinition'" +
+        ", productDefinition='$productDefinitionView'" +
         ", dueDate='$dueDate'" +
         ", dividendRate='$rate'" +
         ", createdBy='$createdBy'" +

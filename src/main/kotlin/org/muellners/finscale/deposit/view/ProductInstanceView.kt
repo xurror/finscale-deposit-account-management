@@ -1,10 +1,10 @@
-package org.muellners.finscale.deposit.views
+package org.muellners.finscale.deposit.view
 
+import java.io.Serializable
 import java.util.*
 import javax.persistence.*
 import org.hibernate.annotations.Cache
 import org.hibernate.annotations.CacheConcurrencyStrategy
-import org.muellners.finscale.deposit.domain.AbstractAuditingEntity
 
 /**
  * A ProductInstance.
@@ -39,7 +39,8 @@ data class ProductInstanceView(
     @Column(name = "state", nullable = false)
     var state: Boolean? = null
 
-) : AbstractAuditingEntity() {
+// ) : AbstractAuditingEntity() {
+) : Serializable {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other !is ProductInstanceView) return false

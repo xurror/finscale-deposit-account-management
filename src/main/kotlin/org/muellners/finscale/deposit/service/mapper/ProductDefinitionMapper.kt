@@ -2,12 +2,12 @@ package org.muellners.finscale.deposit.service.mapper
 
 import java.util.*
 import org.muellners.finscale.deposit.domain.productInstance.commands.ProductDefinition
-import org.muellners.finscale.deposit.views.ProductDefinitionView
+import org.muellners.finscale.deposit.view.ProductDefinitionView
 import org.springframework.stereotype.Service
 
 @Service
 class ProductDefinitionMapper() {
-    fun productDefinitionToProductDefinitionView(productDefinition: ProductDefinition): ProductDefinitionView {
+    fun map(productDefinition: ProductDefinition): ProductDefinitionView {
         val productDefinitionView = ProductDefinitionView(
             id = productDefinition.id.toString(),
             identifier = productDefinition.identifier,
@@ -26,7 +26,7 @@ class ProductDefinitionMapper() {
         return productDefinitionView
     }
 
-    fun productDefinitionViewToProductDefinition(productDefinitionView: ProductDefinitionView): ProductDefinition {
+    fun map(productDefinitionView: ProductDefinitionView): ProductDefinition {
         val productDefinition = ProductDefinition()
         productDefinition.id = UUID.fromString(productDefinitionView.id)
         productDefinition.identifier = productDefinitionView.identifier

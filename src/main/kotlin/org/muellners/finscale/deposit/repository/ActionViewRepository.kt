@@ -1,6 +1,6 @@
 package org.muellners.finscale.deposit.repository
 
-import org.muellners.finscale.deposit.views.Action
+import org.muellners.finscale.deposit.view.ActionView
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.stereotype.Repository
 
@@ -9,4 +9,4 @@ import org.springframework.stereotype.Repository
  */
 @Suppress("unused")
 @Repository
-interface ActionRepository : JpaRepository<Action, Long>
+interface ActionViewRepository : JpaRepository<ActionView, String>
